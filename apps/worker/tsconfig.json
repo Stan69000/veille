@@ -1,0 +1,22 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "moduleResolution": "bundler"
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "**/*.test.ts"],
+  "references": [
+    { "path": "../../packages/core" },
+    { "path": "../../packages/database" },
+    { "path": "../../packages/security" },
+    { "path": "../../packages/ai" },
+    { "path": "../../packages/ingestion" },
+    { "path": "../../packages/parsing" },
+    { "path": "../../packages/dedupe" },
+    { "path": "../../packages/enrichment" },
+    { "path": "../../packages/scoring" },
+    { "path": "../../packages/publishing" }
+  ]
+}

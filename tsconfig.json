@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022"],
+    
+    "strict": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "strictBindCallApply": true,
+    "strictPropertyInitialization": true,
+    "noImplicitAny": true,
+    "noImplicitReturns": true,
+    "noImplicitThis": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "exactOptionalPropertyTypes": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true,
+    
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "outDir": "./dist",
+    "rootDir": ".",
+    
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./*"],
+      
+      "@core/*": ["packages/core/src/*"],
+      "@database/*": ["packages/database/src/*"],
+      "@security/*": ["packages/security/src/*"],
+      "@ui/*": ["packages/ui/src/*"],
+      "@ai/*": ["packages/ai/src/*"],
+      "@billing/*": ["packages/billing/src/*"],
+      "@ingestion/*": ["packages/ingestion/src/*"],
+      "@parsing/*": ["packages/parsing/src/*"],
+      "@dedupe/*": ["packages/dedupe/src/*"],
+      "@enrichment/*": ["packages/enrichment/src/*"],
+      "@publishing/*": ["packages/publishing/src/*"],
+      "@scoring/*": ["packages/scoring/src/*"],
+      "@accessibility/*": ["packages/accessibility/src/*"],
+      "@utils/*": ["packages/utils/src/*"],
+      "@schemas/*": ["packages/schemas/src/*"]
+    }
+  },
+  "exclude": ["node_modules", "dist", ".turbo", ".next"],
+  "references": [
+    { "path": "./packages/core" },
+    { "path": "./packages/schemas" },
+    { "path": "./packages/database" },
+    { "path": "./packages/security" },
+    { "path": "./packages/ui" },
+    { "path": "./packages/ai" },
+    { "path": "./packages/billing" },
+    { "path": "./packages/ingestion" },
+    { "path": "./packages/parsing" },
+    { "path": "./packages/dedupe" },
+    { "path": "./packages/enrichment" },
+    { "path": "./packages/publishing" },
+    { "path": "./packages/scoring" },
+    { "path": "./packages/accessibility" },
+    { "path": "./packages/utils" }
+  ]
+}

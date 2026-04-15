@@ -1,0 +1,83 @@
+{
+  "name": "veille-platform",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Plateforme professionnelle de veille éditoriale multi-sources",
+  "engines": {
+    "node": ">=20.11.0",
+    "pnpm": ">=8.15.0"
+  },
+  "scripts": {
+    "dev": "pnpm -r --parallel --stream dev",
+    "build": "pnpm -r build",
+    "build:affected": "pnpm -r --filter=./packages/* build",
+    "dev:api": "pnpm --filter api dev",
+    "dev:admin": "pnpm --filter admin dev",
+    "dev:worker": "pnpm --filter worker dev",
+    "dev:public-api": "pnpm --filter public-api dev",
+    "build:api": "pnpm --filter api build",
+    "build:admin": "pnpm --filter admin build",
+    "build:worker": "pnpm --filter worker build",
+    "build:public-api": "pnpm --filter public-api build",
+    "build:packages": "pnpm -r --filter='./packages/*' build",
+    "lint": "pnpm -r lint",
+    "lint:fix": "pnpm -r lint:fix",
+    "lint:affected": "pnpm -r --filter=./apps/* lint",
+    "typecheck": "pnpm -r typecheck",
+    "typecheck:affected": "pnpm -r --filter=./apps/* typecheck",
+    "format": "pnpm -r format",
+    "format:fix": "pnpm -r format:fix",
+    "clean": "pnpm -r clean && rm -rf node_modules",
+    "clean:builds": "pnpm -r --filter='./**' exec rm -rf dist .turbo .next node_modules/.cache",
+    "db:generate": "pnpm --filter @database generate",
+    "db:push": "pnpm --filter @database push",
+    "db:migrate": "pnpm --filter @database migrate",
+    "db:migrate:dev": "pnpm --filter @database migrate:dev",
+    "db:seed": "pnpm --filter @database seed",
+    "db:studio": "pnpm --filter @database studio",
+    "db:reset": "pnpm --filter @database reset",
+    "test": "pnpm -r test",
+    "test:watch": "pnpm -r test:watch",
+    "test:coverage": "pnpm -r test:coverage",
+    "test:affected": "pnpm -r --filter=./** test --since origin/main",
+    "prepare": "husky install",
+    "preinstall": "npx only-allow pnpm",
+    "changeset": "changeset",
+    "release": "changeset version && pnpm build && changeset publish"
+  },
+  "devDependencies": {
+    "@changesets/cli": "^2.27.1",
+    "@types/node": "^20.11.0",
+    "husky": "^9.0.0",
+    "lint-staged": "^15.2.0",
+    "only-allow": "^1.2.1",
+    "prettier": "^3.2.0",
+    "prettier-plugin-tailwindcss": "^0.5.0",
+    "typescript": "^5.3.0"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx}": [
+      "prettier --write",
+      "eslint --fix"
+    ],
+    "*.{json,md,yml,yaml}": [
+      "prettier --write"
+    ],
+    "*.prisma": [
+      "prisma format"
+    ]
+  },
+  "packageManager": "pnpm@8.15.0",
+  "pnpm": {
+    "overrides": {
+      "@types/react": "^18.2.0",
+      "@types/react-dom": "^18.2.0"
+    },
+    "onlyBuiltDependencies": [
+      "prisma"
+    ]
+  },
+  "dependencies": {
+    "pnpm": "^10.33.0"
+  }
+}

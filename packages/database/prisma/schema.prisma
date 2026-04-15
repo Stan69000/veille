@@ -1,0 +1,408 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  OWNER
+  ADMIN
+  EDITOR
+  CURATOR
+  VIEWER
+}
+
+enum Audience {
+  GENERAL
+  PROFESSIONNELS
+  ASSOCIATIONS
+  PARTICULIERS
+  SENIORS
+  JEUNES
+  ENTREPRISES
+  INSTITUTIONS
+}
+
+enum SourceType {
+  RSS
+  EMAIL
+  SMS
+  MANUAL
+  WEB
+}
+
+enum SourceFrequency {
+  MANUAL
+  EVERY_15M
+  HOURLY
+  EVERY_6H
+  DAILY
+  CUSTOM
+}
+
+enum SourceStatus {
+  ACTIVE
+  DISABLED
+  ERROR
+  PENDING
+}
+
+enum ItemStatus {
+  RAW
+  PROCESSING
+  APPROVED
+  REJECTED
+  QUARANTINE
+  PUBLISHED
+}
+
+enum Severity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum PlanType {
+  FREE
+  PREMIUM
+  ASSOCIATION
+  PRO
+  TEAM
+}
+
+model Workspace {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  planType    PlanType @default(FREE)
+  settings    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users       User[]
+  sources     Source[]
+  items       Item[]
+  stories     Story[]
+  aiLogs      AiLog[]
+  subscriptions Subscription[]
+  featureFlags FeatureFlag[]
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  passwordHash  String?
+  role          Role      @default(VIEWER)
+  isActive      Boolean   @default(true)
+  lastLoginAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  workspaceId   String
+  workspace     Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([email])
+  @@index([workspaceId])
+}
+
+model Source {
+  id          String          @id @default(cuid())
+  name        String
+  type        SourceType
+  url         String?
+  frequency   SourceFrequency @default(MANUAL)
+  cronExpr    String?
+  status      SourceStatus    @default(PENDING)
+  config      Json?
+  lastFetchAt DateTime?
+  errorCount  Int             @default(0)
+  lastError   String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  rawIngestions RawIngestion[]
+  publications   PublicationTarget[]
+
+  @@index([workspaceId])
+  @@index([status])
+}
+
+model RawIngestion {
+  id          String   @id @default(cuid())
+  content     String   @db.Text
+  metadata    Json?
+  fetchedAt   DateTime @default(now())
+  processedAt DateTime?
+  status      String   @default("pending")
+
+  sourceId    String
+  source      Source   @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  item        Item?
+
+  @@index([sourceId])
+  @@index([status])
+}
+
+model Item {
+  id            String      @id @default(cuid())
+  title         String
+  url           String?
+  content       String?     @db.Text
+  summary       String?     @db.Text
+  author        String?
+  publishedAt   DateTime?
+  fetchedAt     DateTime    @default(now())
+  status        ItemStatus  @default(RAW)
+  severity      Severity?
+  audience      Audience[]
+  categories    String[]
+  tags          String[]
+  fingerprint   String?     @unique
+  metadata      Json?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  workspaceId   String
+  workspace     Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  storyId       String?
+  story         Story?      @relation(fields: [storyId], references: [id])
+  rawIngestionId String? @unique
+  rawIngestion  RawIngestion? @relation(fields: [rawIngestionId], references: [id])
+  mediaAssets   MediaAsset[]
+
+  @@index([workspaceId])
+  @@index([status])
+  @@index([publishedAt])
+  @@index([fingerprint])
+}
+
+model Story {
+  id            String   @id @default(cuid())
+  title         String
+  slug          String   @unique
+  summary       String?  @db.Text
+  content       String?  @db.Text
+  coverImage    String?
+  publishedAt   DateTime?
+  isPublished   Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  workspaceId   String
+  workspace     Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  items         Item[]
+
+  @@index([workspaceId])
+  @@index([slug])
+}
+
+model PublicationTarget {
+  id          String   @id @default(cuid())
+  name        String
+  type        String
+  config      Json
+  isEnabled   Boolean  @default(true)
+  lastPublish DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  sourceId    String
+  source      Source   @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@index([sourceId])
+}
+
+model MediaAsset {
+  id          String   @id @default(cuid())
+  filename    String
+  mimeType    String
+  size        Int
+  url         String
+  alt         String?
+  createdAt   DateTime @default(now())
+
+  itemId      String?
+  item        Item?    @relation(fields: [itemId], references: [id], onDelete: SetNull)
+
+  @@index([itemId])
+}
+
+model AiProvider {
+  id        String   @id @default(cuid())
+  name      String
+  type      String
+  apiKey    String?
+  endpoint  String?
+  isDefault Boolean  @default(false)
+  config    Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  prompts   AiPrompt[]
+  tasks     AiTask[]
+  logs      AiLog[]
+}
+
+model AiPrompt {
+  id          String   @id @default(cuid())
+  name        String
+  type        String
+  template    String   @db.Text
+  variables   String[]
+  version     Int      @default(1)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  providerId  String
+  provider    AiProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  policies    AiPolicy[]
+
+  @@index([providerId])
+  @@index([type])
+}
+
+model AiTask {
+  id          String   @id @default(cuid())
+  name        String
+  type        String
+  config      Json?
+  isEnabled   Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  providerId  String
+  provider    AiProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  policies    AiPolicy[]
+
+  @@index([providerId])
+}
+
+model AiPolicy {
+  id          String   @id @default(cuid())
+  name        String
+  priority    Int      @default(0)
+  conditions  Json
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  promptId    String?
+  prompt      AiPrompt? @relation(fields: [promptId], references: [id], onDelete: SetNull)
+
+  taskId      String?
+  task        AiTask? @relation(fields: [taskId], references: [id], onDelete: SetNull)
+
+  @@index([promptId])
+  @@index([taskId])
+}
+
+model AiLog {
+  id          String   @id @default(cuid())
+  input       Json
+  output      Json?
+  error       String?
+  duration    Int?
+  tokensUsed  Int?
+  cost        Float?
+  createdAt   DateTime @default(now())
+
+  providerId  String
+  provider    AiProvider @relation(fields: [providerId], references: [id])
+
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([providerId])
+  @@index([workspaceId])
+  @@index([createdAt])
+}
+
+model Plan {
+  id          String   @id @default(cuid())
+  name        String
+  type        PlanType @unique
+  price       Float    @default(0)
+  currency    String   @default("EUR")
+  interval    String   @default("month")
+  features    Json
+  limits      Json
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  subscriptions Subscription[]
+  planFeatures PlanFeature[]
+}
+
+model PlanFeature {
+  id        String   @id @default(cuid())
+  name      String
+  key       String
+  value     Json
+  planId    String
+  plan      Plan     @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@unique([planId, key])
+}
+
+model Subscription {
+  id              String    @id @default(cuid())
+  status          String    @default("active")
+  currentPeriodStart DateTime
+  currentPeriodEnd   DateTime
+  cancelAtPeriodEnd  Boolean  @default(false)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  workspaceId     String
+  workspace       Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  planId          String
+  plan            Plan      @relation(fields: [planId], references: [id])
+
+  @@index([workspaceId])
+  @@index([planId])
+}
+
+model FeatureFlag {
+  id          String   @id @default(cuid())
+  key         String
+  value       Json
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([workspaceId, key])
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  action      String
+  entityType  String
+  entityId    String?
+  metadata    Json?
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+
+  userId      String?
+
+  @@index([action])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}

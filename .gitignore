@@ -1,0 +1,49 @@
+# Dependencies
+node_modules
+.pnpm-store
+
+# Build outputs
+dist
+.next
+.turbo
+build
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Testing
+coverage
+.nyc_output
+
+# Prisma
+*.db
+*.db-journal
+
+# Storage (local dev)
+/storage/raw
+/storage/processed
+/storage/exports
+/storage/quarantine
+
+# Misc
+*.tsbuildinfo
+.vercel
+.turbo-runner

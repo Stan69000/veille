@@ -1,0 +1,1245 @@
+// ===========================================
+// VEILLE PLATFORM - SCHEMA PRISMA
+// ===========================================
+// Version: 1.0.0
+// Description: Schéma complet pour la plateforme de veille éditoriale
+// ===========================================
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["fullTextSearch", "fullTextIndex", "relationJoins"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ===========================================
+// ENUMS
+// ===========================================
+
+// --- Utilisateurs & Auth ---
+
+enum UserRole {
+  OWNER    // Propriétaire du workspace
+  ADMIN    // Administrateur
+  EDITOR   // Éditeur
+  CURATOR  // Curateur (review)
+  VIEWER   // Lecteur simple
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  PENDING_VERIFICATION
+}
+
+// --- Sources & Ingestion ---
+
+enum SourceType {
+  RSS        // Flux RSS standard
+  ATOM       // Flux Atom
+  NEWSLETTER // Newsletter email
+  EMAIL      // Boîte email dédiée
+  SMS        // SMS entrants
+  MANUAL     // Import manuel
+  WEBHOOK    // Endpoint webhook
+  API        // Source API
+}
+
+enum SourceStatus {
+  ACTIVE     // Actif et utilisé
+  PAUSED     // En pause temporaire
+  ERROR      // Erreur de fetch
+  DISABLED   // Désactivé manuellement
+  PENDING    // En attente de validation
+}
+
+enum SourceTrustLevel {
+  TRUSTED    // Source approuvée, contenu automatique
+  VERIFIED   // Vérifiée manuellement
+  UNVERIFIED // Pas encore vérifiée
+  FLAGGED    // Signalée comme suspecte
+  BLOCKED    // Bloquée
+}
+
+enum FetchFrequencyMode {
+  MANUAL     // Import manuel uniquement
+  EVERY_15M  // Toutes les 15 minutes
+  HOURLY     // Toutes les heures
+  EVERY_6H   // Toutes les 6 heures
+  EVERY_12H  // Toutes les 12 heures
+  DAILY      // Une fois par jour
+  WEEKLY     // Une fois par semaine
+  CUSTOM     // Cron personnalisé
+}
+
+enum ProcessingStatus {
+  PENDING      // En attente de traitement
+  PROCESSING   // En cours de traitement
+  COMPLETED    // Terminé avec succès
+  FAILED       // Échoué
+  QUARANTINED  // Mis en quarantaine (suspect)
+}
+
+// --- Contenu ---
+
+enum ItemType {
+  ARTICLE   // Article de presse
+  NEWS      // Actualité
+  ALERT     // Alerte/urgence
+  POST      // Post réseau social
+  EVENT     // Événement
+  JOB       // Offre d'emploi
+  PRODUCT   // Produit/nouveau service
+  VIDEO     // Vidéo
+  PODCAST   // Épisode podcast
+  DOCUMENT  // Document PDF/rapport
+  UNKNOWN   // Type indéterminé
+}
+
+enum ItemStatus {
+  RAW            // Contenu brut, non traité
+  PARSED         // Parsé et nettoyé
+  DEDUPLICATED   // Dédoublonné
+  ENRICHED       // Enrichi (IA ou manuel)
+  PENDING_REVIEW // En attente de review
+  APPROVED       // Approuvé
+  REJECTED       // Rejeté
+  QUARANTINED    // En quarantaine
+  PUBLISHED      // Publié
+  ARCHIVED       // Archivé
+}
+
+enum Severity {
+  INFO     // Information générale
+  LOW      // Importance faible
+  MEDIUM   // Importance moyenne
+  HIGH     // Importance élevée
+  CRITICAL // Critique/urgent
+}
+
+enum EditorialStatus {
+  DRAFT       // Brouillon
+  IN_PROGRESS // En cours de rédaction
+  READY       // Prêt à publier
+  PUBLISHED   // Publié
+  ARCHIVED    // Archivé
+}
+
+enum StoryItemRole {
+  PRIMARY    // Source principale de la story
+  SECONDARY  // Source complémentaire
+  CONTEXT    // Contexte/background
+  RELATED    // Lié de loin
+}
+
+enum Audience {
+  GENERAL         // Grand public
+  PROFESSIONNELS  // Professionnels d'un secteur
+  ASSOCIATIONS    // Responsables d'associations
+  PARTICULIERS    // Particuliers
+  SENIORS         // Personnes âgées
+  JEUNES          // Jeunes/étudiants
+  ENTREPRISES     // Chefs d'entreprise
+  INSTITUTIONS    // Établissements publics
+}
+
+enum VariantStatus {
+  DRAFT     // Non généré
+  GENERATED // Généré par IA
+  REVIEWED  // Reviewé par humain
+  APPROVED  // Approuvé
+  PUBLISHED // Publié avec cette variant
+}
+
+// --- Publication ---
+
+enum PublicationTargetType {
+  JSON     // Export JSON fichier
+  MDX      // Export MDX pour Astro
+  RSS      // Flux RSS
+  API      // Push vers API externe
+  ASTRO    // Sync directe Astro
+  CUSTOM   // Format personnalisé
+}
+
+enum PublicationTargetStatus {
+  ACTIVE   // Cible active
+  PAUSED   // En pause
+  ERROR    // Erreur de publication
+  DISABLED // Désactivée
+}
+
+enum PublicationJobStatus {
+  QUEUED    // En attente
+  RUNNING   // En cours
+  COMPLETED // Terminé
+  FAILED    // Échoué
+  CANCELLED // Annulé
+}
+
+// --- Médias ---
+
+enum MediaAssetStatus {
+  UPLOADING  // En cours d'upload
+  PROCESSING // En cours de traitement
+  READY      // Prêt
+  ERROR      // Erreur
+  DELETED    // Supprimé
+}
+
+// --- IA ---
+
+enum AiProviderType {
+  OPENAI     // OpenAI GPT
+  ANTHROPIC  // Anthropic Claude
+  GOOGLE     // Google Gemini
+  LOCAL      // Modèle local (Ollama)
+}
+
+enum AiTaskType {
+  SUMMARIZE_ITEM       // Résumé d'article
+  SUMMARIZE_STORY      // Résumé de story consolidée
+  CLASSIFY_CATEGORY    // Classification catégorie
+  CLASSIFY_AUDIENCE    // Classification audience
+  CLASSIFY_SEVERITY    // Classification sévérité
+  DEDUPE_HINT          // Suggestion dedup
+  CLUSTER_HINT         // Suggestion clustering
+  EXTRACT_ACTIONS      // Extraction actions à mener
+  REWRITE_PUBLIC       // Réécriture grand public
+  REWRITE_ASSOCIATION  // Réécriture associations
+  GENERATE_SEO         // Génération SEO
+  DETECT_PHISHING      // Détection phishing
+  SUGGEST_TAGS         // Suggestion de tags
+}
+
+enum AiMode {
+  OFF                  // Désactivé
+  SUGGEST              // Suggestion, à confirmer
+  ASSIST               // Assistance, humain finalise
+  AUTO_REVIEW_REQUIRED // Auto mais review obligatoire
+  AUTO                 // Entièrement automatique
+}
+
+enum AiLogStatus {
+  PENDING  // En attente
+  RUNNING  // En cours
+  COMPLETED// Terminé
+  FAILED   // Échoué
+  TIMEOUT  // Timeout
+}
+
+// --- Billing ---
+
+enum PlanType {
+  FREE
+  PREMIUM
+  ASSOCIATION
+  PRO
+  TEAM
+  ENTERPRISE
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  TRIALING
+  INCOMPLETE
+  PAUSED
+}
+
+enum FeatureFlagType {
+  BOOLEAN   // On/Off
+  RATE_LIMIT // Limite de taux
+  QUOTA     // Quota numerique
+}
+
+// --- Audit ---
+
+enum AuditAction {
+  CREATE
+  READ
+  UPDATE
+  DELETE
+  LOGIN
+  LOGOUT
+  PUBLISH
+  APPROVE
+  REJECT
+  ENABLE
+  DISABLE
+  EXPORT
+  IMPORT
+  EXECUTE
+}
+
+// ===========================================
+// WORKSPACE & BILLING
+// ===========================================
+
+model Workspace {
+  id        String    @id @default(cuid())
+  name      String
+  slug      String    @unique
+  logoUrl   String?
+  plan      PlanType  @default(FREE)
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  // Relations
+  users              User[]
+  sources            Source[]
+  items              Item[]
+  stories            Story[]
+  publicationTargets PublicationTarget[]
+  featureFlags       FeatureFlag[]
+  auditLogs          AuditLog[]
+  subscriptions      Subscription[]
+  
+  // Billing
+  stripeCustomerId   String?   @unique
+  billingEmail       String?
+
+  @@map("workspaces")
+}
+
+model Plan {
+  id                   String    @id @default(cuid())
+  name                 String    @unique
+  type                 PlanType  @unique
+  description          String?
+  priceMonthly         Int       @default(0) // Centimes
+  priceYearly          Int       @default(0) // Centimes
+  currency              String    @default("EUR")
+  trialDays             Int       @default(0)
+  isActive             Boolean   @default(true)
+  
+  // Stripe
+  stripePriceIdMonthly String?   @unique
+  stripePriceIdYearly  String?   @unique
+  
+  // Configuration
+  features             Json      @default("[]") // Array de strings
+  limits               Json      @default("{}") // { sources: 5, items: 1000, ... }
+  
+  // Metadata
+  sortOrder            Int       @default(0)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  // Relations
+  subscriptions        Subscription[]
+  planFeatures         PlanFeature[]
+
+  @@map("plans")
+}
+
+model Subscription {
+  id                    String             @id @default(cuid())
+  workspaceId           String
+  workspace             Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  planId                String
+  plan                  Plan               @relation(fields: [planId], references: [id])
+  
+  // Stripe
+  stripeSubscriptionId  String?            @unique
+  stripeCustomerId      String?
+  stripeCurrentPeriodEnd DateTime?
+  
+  // Status
+  status                SubscriptionStatus @default(TRIALING)
+  
+  // Périodes
+  currentPeriodStart    DateTime
+  currentPeriodEnd      DateTime
+  cancelAtPeriodEnd     Boolean            @default(false)
+  cancelledAt           DateTime?
+  trialEndsAt          DateTime?
+  
+  // Billing
+  defaultPaymentMethod  String?
+  
+  // Metadata
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+
+  @@index([workspaceId])
+  @@index([status])
+  @@index([stripeCustomerId])
+  @@map("subscriptions")
+}
+
+model PlanFeature {
+  id        String   @id @default(cuid())
+  planId    String
+  plan      Plan     @relation(fields: [planId], references: [id], onDelete: Cascade)
+  featureKey String  // "ai_summaries", "api_access", etc.
+  value     Json     // { enabled: true, limit: 100 }
+  createdAt DateTime @default(now())
+
+  @@unique([planId, featureKey])
+  @@map("plan_features")
+}
+
+model FeatureFlag {
+  id          String         @id @default(cuid())
+  workspaceId String
+  workspace   Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  key         String
+  type        FeatureFlagType @default(BOOLEAN)
+  value       Json
+  isEnabled   Boolean        @default(true)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@unique([workspaceId, key])
+  @@index([workspaceId])
+  @@map("feature_flags")
+}
+
+// ===========================================
+// UTILISATEURS & AUTH
+// ===========================================
+
+model User {
+  id        String     @id @default(cuid())
+  email     String     @unique
+  passwordHash String
+  
+  // Profil
+  name      String
+  avatarUrl String?
+  role      UserRole   @default(VIEWER)
+  status    UserStatus @default(PENDING_VERIFICATION)
+  
+  // Workspace
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  
+  // Sécurité
+  emailVerified    Boolean    @default(false)
+  emailVerifyToken String?    @unique
+  emailVerifyExpires DateTime?
+  
+  twoFactorEnabled  Boolean    @default(false)
+  twoFactorSecret   String?
+  
+  // Session
+  lastLoginAt       DateTime?
+  loginAttempts     Int        @default(0)
+  lockedUntil       DateTime?
+  
+  // Metadata
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  // Relations
+  sessions    Session[]
+  auditLogs   AuditLog[]
+  aiLogs      AiLog[]
+
+  @@index([email])
+  @@index([workspaceId])
+  @@index([status])
+  @@map("users")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Token
+  token     String   @unique
+  
+  // Context
+  userAgent String?
+  ipAddress String?
+  
+  // Expiration
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+// ===========================================
+// AUDIT LOGGING
+// ===========================================
+
+model AuditLog {
+  id         String      @id @default(cuid())
+  
+  // Action
+  action     AuditAction
+  targetType String?     // "Item", "Story", "Source", etc.
+  targetId   String?
+  
+  // Contexte
+  userId     String?
+  user       User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  workspaceId String?
+  workspace  Workspace?  @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+  
+  // Données
+  metadata   Json?
+  
+  // Request context
+  ipAddress  String?
+  userAgent  String?
+  
+  createdAt  DateTime    @default(now())
+
+  @@index([userId])
+  @@index([workspaceId])
+  @@index([targetType, targetId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// ===========================================
+// SOURCES & INGESTION
+// ===========================================
+
+model Source {
+  id          String   @id @default(cuid())
+  name        String
+  type        SourceType
+  
+  // URL et domaine
+  url         String?
+  domain      String?
+  
+  // Status
+  status      SourceStatus @default(PENDING)
+  trustLevel  SourceTrustLevel @default(UNVERIFIED)
+  
+  // Workspace
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  
+  // Configuration fetch
+  fetchFrequencyMode FetchFrequencyMode @default(MANUAL)
+  fetchCron         String?              // Expression cron si CUSTOM
+  timeoutMs         Int                 @default(30000)
+  retryPolicy        Json                @default("{\"maxRetries\": 3, \"backoff\": \"exponential\"}")
+  
+  // Format feed
+  feedFormat      String?     // "rss", "atom"
+  feedParserConfig Json?      // Config spécifique au parser
+  
+  // Contenu
+  language        String      @default("fr")
+  categories      String[]
+  tags            String[]
+  description     String?
+  iconUrl         String?
+  color           String?
+  
+  // Notes
+  notes           String?
+  
+  // Statuts fetch
+  lastFetchedAt   DateTime?
+  nextFetchAt     DateTime?
+  lastSuccessAt   DateTime?
+  lastFailureAt   DateTime?
+  lastError       String?
+  fetchCount      Int         @default(0)
+  successCount    Int         @default(0)
+  failureCount    Int         @default(0)
+  
+  // Priorité
+  priority        Int         @default(50) // 1-100
+  
+  // Email spécifique (pour NEWSLETTER/EMAIL)
+  emailAddress    String?
+  emailPassword   String?     @encrypted // Chiffré
+  
+  // Metadata
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  // Relations
+  rawIngestions   RawIngestion[]
+  items            Item[]
+  newsletters      Newsletter[]
+
+  @@index([workspaceId])
+  @@index([status])
+  @@index([type])
+  @@index([fetchFrequencyMode])
+  @@index([lastFetchedAt])
+  @@map("sources")
+}
+
+model RawIngestion {
+  id          String           @id @default(cuid())
+  sourceId    String
+  source      Source           @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  
+  // Canal d'entrée
+  channel     String           @default("rss") // "rss", "email", "sms", "webhook", "manual"
+  
+  // Contenu brut
+  rawPayload  String?          // Payload complet (JSON/XML)
+  rawText     String?          // Texte brut extrait
+  rawHtml     String?          // HTML original
+  rawHeaders  Json?            // Headers (email, etc.)
+  attachmentsMeta Json?        // Métadonnées pièces jointes
+  
+  // Timestamps
+  receivedAt  DateTime        @default(now())
+  processedAt DateTime?
+  
+  // Status
+  processingStatus ProcessingStatus @default(PENDING)
+  processingError  String?
+  processingTimeMs Int?
+  
+  // Dédoublonnage
+  contentHash    String?
+  fingerprint    String?
+  
+  createdAt      DateTime      @default(now())
+
+  // Relations
+  item           Item?
+
+  @@index([sourceId])
+  @@index([processingStatus])
+  @@index([contentHash])
+  @@index([receivedAt])
+  @@index([fingerprint])
+  @@map("raw_ingestions")
+}
+
+// ===========================================
+// ITEMS & STORIES
+// ===========================================
+
+model Item {
+  id        String   @id @default(cuid())
+  
+  // Source
+  sourceId  String
+  source    Source   @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  
+  // Workspace
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  
+  // Ingestion
+  ingestionId String?  @unique
+  ingestion   RawIngestion? @relation(fields: [ingestionId], references: [id], onDelete: SetNull)
+  
+  // Type et titre
+  type      ItemType  @default(ARTICLE)
+  title     String
+  
+  // URLs et auteur
+  canonicalUrl String?
+  domain       String?
+  author       String?
+  
+  // Publication
+  publishedAt DateTime?
+  extractedAt DateTime   @default(now())
+  
+  // Contenu texte
+  extractedText String?    // Texte extrait du HTML
+  cleanedText   String?    // Texte nettoyé (liens, scripts retirés)
+  
+  // Résumés
+  summaryShort  String?    // Résumé court (1-2 phrases)
+  summaryPublic String?    // Résumé grand public
+  summaryAi    String?     // Résumé généré par IA
+  summaryAiMode AiMode     @default(OFF)
+  
+  // Classification
+  category     String?
+  subcategory  String?
+  tags         String[]
+  severity     Severity   @default(INFO)
+  
+  // Scoring
+  importanceScore Float   @default(0.5)
+  relevanceScore  Float   @default(0.5)
+  confidenceScore Float   @default(0.5)
+  
+  // Status
+  status      ItemStatus @default(RAW)
+  
+  // Dédoublonnage
+  fingerprint  String?    @unique
+  duplicateOfId String?
+  duplicateOf  Item?      @relation("ItemDuplicates", fields: [duplicateOfId], references: [id])
+  duplicates   Item[]    @relation("ItemDuplicates")
+  
+  // Clustering
+  storyId      String?
+  story        Story?    @relation(fields: [storyId], references: [id], onDelete: SetNull)
+  
+  // Médias
+  imageUrl     String?
+  images       MediaAsset[]
+  
+  // Métadonnées additionnelles
+  language     String     @default("fr")
+  wordCount    Int?
+  readingTimeMin Int?
+  externalId   String?    // ID externe (pour sync)
+  
+  // Metadata
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  // Relations
+  storyItems   StoryItem[]
+
+  @@index([workspaceId])
+  @@index([sourceId])
+  @@index([status])
+  @@index([category])
+  @@index([severity])
+  @@index([fingerprint])
+  @@index([publishedAt])
+  @@index([storyId])
+  @@index([createdAt])
+  @@map("items")
+}
+
+model Story {
+  id        String   @id @default(cuid())
+  
+  // Workspace
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  
+  // Slug unique
+  slug      String   @unique
+  
+  // Contenu principal
+  title     String
+  strapline String?  // Sous-titre/accroche
+  summary   String?  // Résumé interne
+  summaryPublic String? // Résumé public
+  
+  // Blocs éditoriaux enrichis
+  whyItMatters   String?  // Pourquoi c'est important
+  whatToDo       String?  // Ce qu'il faut faire
+  whoIsConcerned String?  // Qui est concerné
+  
+  // Classification
+  category     String?
+  subcategory  String?
+  tags         String[]
+  severity     Severity @default(INFO)
+  
+  // Status éditorial
+  editorialStatus EditorialStatus @default(DRAFT)
+  
+  // Timestamps
+  firstSeenAt   DateTime  @default(now())
+  lastUpdatedAt DateTime  @updatedAt
+  publishedAt   DateTime?
+  
+  // Scoring
+  importanceScore Float  @default(0.5)
+  coverageCount   Int    @default(0) // Nombre d'items liés
+  
+  // IA
+  aiSummary  String?
+  aiSummaryMode AiMode @default(OFF)
+  
+  // Metadata
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  // Relations
+  items       StoryItem[]
+  variants    AudienceVariant[]
+  publicationJobs PublicationJob[]
+  storyItems  StoryItem[]
+
+  @@index([workspaceId])
+  @@index([slug])
+  @@index([editorialStatus])
+  @@index([category])
+  @@index([severity])
+  @@index([publishedAt])
+  @@index([firstSeenAt])
+  @@map("stories")
+}
+
+model StoryItem {
+  id        String        @id @default(cuid())
+  storyId   String
+  story     Story         @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  itemId    String
+  item      Item          @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  role      StoryItemRole @default(SECONDARY)
+  order     Int           @default(0)
+  createdAt DateTime      @default(now())
+
+  @@unique([storyId, itemId])
+  @@index([storyId])
+  @@index([itemId])
+  @@map("story_items")
+}
+
+model AudienceVariant {
+  id        String   @id @default(cuid())
+  storyId   String
+  story     Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  audience  Audience
+  
+  // Contenu varié
+  title          String?
+  summary        String?
+  whyItMatters   String?
+  whatToDo       String?
+  whoIsConcerned String?
+  
+  // SEO
+  seoTitle       String?
+  seoDescription String?
+  
+  // Status
+  status    VariantStatus @default(DRAFT)
+  
+  // IA
+  aiGenerated Boolean  @default(false)
+  aiMode      AiMode   @default(OFF)
+  
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@unique([storyId, audience])
+  @@index([storyId])
+  @@map("audience_variants")
+}
+
+// ===========================================
+// PUBLICATION
+// ===========================================
+
+model PublicationTarget {
+  id          String   @id @default(cuid())
+  name        String
+  type        PublicationTargetType
+  
+  // Workspace
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  
+  // Status
+  status      PublicationTargetStatus @default(ACTIVE)
+  
+  // Configuration
+  config      Json     @default("{}")
+  
+  // Champs spécifiques par type
+  baseUrl     String?  // URL de base pour API
+  apiKey      String?  // Clé API si nécessaire
+  exportPath  String?  // Chemin de stockage local
+  format      String?  // Format spécifique (encoding, etc.)
+  
+  // Metadata
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  jobs        PublicationJob[]
+
+  @@index([workspaceId])
+  @@index([type])
+  @@index([status])
+  @@map("publication_targets")
+}
+
+model PublicationJob {
+  id        String   @id @default(cuid())
+  targetId  String
+  target    PublicationTarget @relation(fields: [targetId], references: [id], onDelete: Cascade)
+  
+  // Story exportée (optionnel)
+  storyId   String?
+  story      Story?  @relation(fields: [storyId], references: [id], onDelete: SetNull)
+  
+  // Status
+  status    PublicationJobStatus @default(QUEUED)
+  
+  // Output
+  outputPath String?
+  outputUrl  String?
+  
+  // Timing
+  startedAt  DateTime?
+  finishedAt DateTime?
+  
+  // Logs
+  logs       String[] @default([])
+  error      String?
+  
+  // Metadata
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([targetId])
+  @@index([status])
+  @@index([storyId])
+  @@index([createdAt])
+  @@map("publication_jobs")
+}
+
+// ===========================================
+// MÉDIAS
+// ===========================================
+
+model MediaAsset {
+  id        String   @id @default(cuid())
+  
+  // Fichier
+  fileName  String
+  mimeType  String
+  size      Int      // En bytes
+  sha256    String   @unique // Empreinte pour dedup
+  
+  // Stockage
+  storagePath String
+  storageBucket String?
+  
+  // Traitement
+  status    MediaAssetStatus @default(UPLOADING)
+  width     Int?
+  height    Int?
+  duration  Int?    // Pour audio/vidéo en ms
+  format    String? // "webp", "jpeg", etc.
+  
+  // Relations
+  itemId    String?
+  item      Item?   @relation(fields: [itemId], references: [id], onDelete: SetNull)
+  
+  // Métadonnées
+  alt       String?
+  caption   String?
+  credit    String?
+  
+  // URLs
+  publicUrl    String?
+  thumbnailUrl String?
+  
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([itemId])
+  @@index([sha256])
+  @@index([status])
+  @@map("media_assets")
+}
+
+// ===========================================
+// IA
+// ===========================================
+
+model AiProvider {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  type      AiProviderType
+  
+  // Configuration
+  apiKey    String?  @encrypted // Chiffré
+  baseUrl   String?  // Pour local ou proxy
+  models    Json     @default("[]") // ["gpt-4", "gpt-3.5-turbo"]
+  config    Json     @default("{}")
+  
+  // Status
+  isDefault Boolean  @default(false)
+  isActive  Boolean   @default(true)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  prompts   AiPrompt[]
+  tasks     AiTask[]
+  logs      AiLog[]
+
+  @@map("ai_providers")
+}
+
+model AiPrompt {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  version     Int      @default(1)
+  task        String   // Type de tâche
+  
+  // Provider
+  providerId  String?
+  provider    AiProvider? @relation(fields: [providerId], references: [id], onDelete: SetNull)
+  
+  // Prompts
+  systemPrompt       String?    // Instruction système
+  userPromptTemplate String     // Template avec variables
+  
+  // Variables supportées
+  variables      Json   @default("[]")
+  outputSchema   Json?  // Schema Zod de sortie
+  
+  // Configuration
+  temperature Float    @default(0.7)
+  maxTokens   Int      @default(2000)
+  
+  // Status
+  isActive    Boolean  @default(true)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([task])
+  @@map("ai_prompts")
+}
+
+model AiTask {
+  id          String     @id @default(cuid())
+  name        String     @unique
+  type        AiTaskType
+  description String?
+  
+  // Provider
+  providerId  String?
+  provider    AiProvider? @relation(fields: [providerId], references: [id], onDelete: SetNull)
+  
+  // Prompt
+  promptId    String?
+  prompt      AiPrompt?   @relation(fields: [promptId], references: [id], onDelete: SetNull)
+  
+  // Mode
+  mode        AiMode   @default(OFF)
+  config      Json     @default("{}")
+  isActive    Boolean   @default(true)
+  
+  // Filtres - quand appliquer cette tâche
+  appliesToSources     String[]
+  appliesToCategories   String[]
+  appliesToAudiences    Audience[]
+  
+  // Limites
+  rateLimitPerHour Int?
+  timeoutSeconds   Int    @default(60)
+  
+  // Coût estimé
+  estimatedCostCents Int?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  logs        AiLog[]
+
+  @@index([type])
+  @@index([mode])
+  @@index([isActive])
+  @@map("ai_tasks")
+}
+
+model AiPolicy {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  rules       Json     // Règles de validation/transformation
+  
+  // Scope
+  workspaceId  String?
+  appliesToTasks String[] // Liste des tâches concernées
+  
+  // Status
+  isActive    Boolean   @default(true)
+  priority    Int       @default(0) // Ordre d'application
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("ai_policies")
+}
+
+model AiLog {
+  id        String   @id @default(cuid())
+  
+  // Tâche
+  taskId    String
+  task      AiTask   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  
+  // Provider
+  providerId String?
+  provider   AiProvider? @relation(fields: [providerId], references: [id], onDelete: SetNull)
+  
+  // Utilisateur déclencheur (si manuel)
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  
+  // Request
+  input     Json     // Prompts + variables
+  model     String?
+  
+  // Response
+  output    Json?
+  status    AiLogStatus @default(PENDING)
+  error     String?
+  
+  // Métriques
+  tokensPrompt    Int?
+  tokensCompletion Int?
+  tokensTotal     Int?
+  costCents       Int?
+  durationMs      Int?
+  
+  // Contexte
+  itemId    String?
+  storyId   String?
+  
+  createdAt DateTime @default(now())
+
+  @@index([taskId])
+  @@index([userId])
+  @@index([providerId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("ai_logs")
+}
+
+// ===========================================
+// NEWSLETTERS & SUBMISSIONS
+// ===========================================
+
+model Newsletter {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  
+  // Source associée
+  sourceId  String?
+  source    Source?  @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+  
+  // Status
+  isActive  Boolean  @default(true)
+  
+  // Métadonnées
+  metadata  Json     @default("{}")
+  tags      String[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email])
+  @@map("newsletters")
+}
+
+model Submission {
+  id        String   @id @default(cuid())
+  
+  // Type et contenu
+  type      String   // "link", "text", "file"
+  content   Json     // Contenu selon type
+  
+  // Provenance
+  source    String?  // Website, nom de la source
+  author    String?
+  url       String?
+  email     String?
+  
+  // Status
+  status    String   @default("pending") // "pending", "approved", "rejected"
+  reviewedBy String?
+  reviewedAt DateTime?
+  reviewNotes String?
+  
+  // Traitement
+  processedAt DateTime?
+  error       String?
+  
+  // Workspace
+  workspaceId String
+  priority    Int      @default(0)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([workspaceId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("submissions")
+}
+
+// ===========================================
+// CATÉGORIES & AUDIENCES (Configuration)
+// ===========================================
+
+model Category {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  color       String?  // Hex color
+  icon        String?  // Lucide icon name
+  
+  // Hiérarchie
+  parentId    String?
+  parent      Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children    Category[] @relation("CategoryHierarchy")
+  
+  // Ordre et status
+  order       Int      @default(0)
+  isActive    Boolean  @default(true)
+  
+  // Metadata
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("categories")
+}
+
+model AudienceConfig {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  color       String?
+  icon        String?
+  
+  // Ordre et status
+  order       Int      @default(0)
+  isActive    Boolean  @default(true)
+  
+  // Templates par défaut
+  defaultSummaryTemplate String?
+  defaultWhyMattersTemplate String?
+  defaultWhatToDoTemplate String?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("audiences_config")
+}
+
+// ===========================================
+// VIEW: Stats consolidées (optionnel - PostgreSQL)
+// ===========================================
+
+// Cette vue peut être créée via migration SQL
+// CREATE VIEW workspace_stats AS ... 
+
+// ===========================================
+// FIN DU SCHÉMA
+// ===========================================
