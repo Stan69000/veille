@@ -3,8 +3,14 @@ import fp from 'fastify-plugin';
 import jwt from '@fastify/jwt';
 
 async function authPluginFn(fastify: FastifyInstance) {
+  const jwtSecret =
+    process.env.AUTH_SECRET || 'development-secret-change-in-production';
+  if (process.env.NODE_ENV === 'production' && !process.env.AUTH_SECRET) {
+    throw new Error('AUTH_SECRET is required in production');
+  }
+
   await fastify.register(jwt, {
-    secret: process.env.AUTH_SECRET || 'development-secret-change-in-production',
+    secret: jwtSecret,
     sign: {
       expiresIn: process.env.AUTH_SESSION_DURATION || '7d',
     },

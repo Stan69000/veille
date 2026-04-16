@@ -139,6 +139,13 @@ export default function DashboardPage() {
           </div>
         </div>
 
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <strong>Mode V1 lean:</strong> seules les fonctionnalités cœur sont actives
+          (sources RSS, items, stories, publication JSON). Les modules marqués
+          <span className="mx-1 inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide">Bientôt</span>
+          restent visibles mais non disponibles.
+        </div>
+
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {stats.map((stat) => (
             <Card key={stat.title} className="relative overflow-hidden">

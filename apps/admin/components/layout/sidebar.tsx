@@ -26,9 +26,15 @@ import {
   ChevronDown,
   Menu,
   X,
-  Plus,
 } from 'lucide-react';
 import { useState } from 'react';
+
+type NavItemConfig = {
+  href: string;
+  label: string;
+  icon: React.ElementType;
+  available?: boolean;
+};
 
 const mainNavItems = [
   { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -36,46 +42,59 @@ const mainNavItems = [
   { href: '/admin/items', label: 'Articles', icon: FileText },
   { href: '/admin/stories', label: 'Stories', icon: BookOpen },
   { href: '/admin/sources', label: 'Sources', icon: Rss },
-  { href: '/admin/newsletters', label: 'Newsletters', icon: Mail },
-  { href: '/admin/submissions', label: 'Soumissions', icon: Send },
+  { href: '/admin/newsletters', label: 'Newsletters', icon: Mail, available: false },
+  { href: '/admin/submissions', label: 'Soumissions', icon: Send, available: false },
   { href: '/admin/publish', label: 'Publication', icon: Layers },
-  { href: '/admin/media', label: 'Médias', icon: Image },
-];
+  { href: '/admin/media', label: 'Médias', icon: Image, available: false },
+] as const satisfies readonly NavItemConfig[];
 
 const managementNavItems = [
-  { href: '/admin/audiences', label: 'Audiences', icon: Users },
+  { href: '/admin/audiences', label: 'Audiences', icon: Users, available: false },
   { href: '/admin/logs', label: 'Logs', icon: Activity },
-];
+] as const satisfies readonly NavItemConfig[];
 
 const settingsNavItems = [
   { href: '/admin/settings', label: 'Paramètres', icon: Settings },
   { href: '/admin/accessibility', label: 'Accessibilité', icon: Accessibility },
-  { href: '/admin/design-system', label: 'Design System', icon: Palette },
-];
+  { href: '/admin/design-system', label: 'Design System', icon: Palette, available: false },
+] as const satisfies readonly NavItemConfig[];
 
 const aiNavItems = [
-  { href: '/admin/ai', label: 'IA', icon: Bot },
-  { href: '/admin/ai/providers', label: 'Providers', icon: Settings },
-  { href: '/admin/ai/prompts', label: 'Prompts', icon: FileText },
-  { href: '/admin/ai/tasks', label: 'Tâches', icon: Activity },
-  { href: '/admin/ai/logs', label: 'Logs IA', icon: Activity },
-  { href: '/admin/ai/policies', label: 'Politiques', icon: Key },
-];
+  { href: '/admin/ai', label: 'IA', icon: Bot, available: false },
+  { href: '/admin/ai/providers', label: 'Providers', icon: Settings, available: false },
+  { href: '/admin/ai/prompts', label: 'Prompts', icon: FileText, available: false },
+  { href: '/admin/ai/tasks', label: 'Tâches', icon: Activity, available: false },
+  { href: '/admin/ai/logs', label: 'Logs IA', icon: Activity, available: false },
+  { href: '/admin/ai/policies', label: 'Politiques', icon: Key, available: false },
+] as const satisfies readonly NavItemConfig[];
 
 const billingNavItems = [
-  { href: '/admin/billing', label: 'Facturation', icon: CreditCard },
-  { href: '/admin/plans', label: 'Plans', icon: Receipt },
-  { href: '/admin/entitlements', label: 'Droits', icon: Key },
-];
+  { href: '/admin/billing', label: 'Facturation', icon: CreditCard, available: false },
+  { href: '/admin/plans', label: 'Plans', icon: Receipt, available: false },
+  { href: '/admin/entitlements', label: 'Droits', icon: Key, available: false },
+] as const satisfies readonly NavItemConfig[];
 
 interface NavItemProps {
   href: string;
   label: string;
   icon: React.ElementType;
+  available?: boolean;
   isActive?: boolean;
 }
 
-function NavItem({ href, label, icon: Icon, isActive }: NavItemProps) {
+function NavItem({ href, label, icon: Icon, available = true, isActive }: NavItemProps) {
+  if (!available) {
+    return (
+      <div className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-neutral-400">
+        <Icon className="h-4 w-4" aria-hidden="true" />
+        <span>{label}</span>
+        <span className="ml-auto rounded-full bg-neutral-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-neutral-500">
+          Bientôt
+        </span>
+      </div>
+    );
+  }
+
   return (
     <Link
       href={href}
@@ -94,7 +113,7 @@ function NavItem({ href, label, icon: Icon, isActive }: NavItemProps) {
 
 interface NavSectionProps {
   title: string;
-  items: NavItemProps[];
+  items: readonly NavItemConfig[];
   pathname: string;
   defaultOpen?: boolean;
 }
@@ -126,6 +145,7 @@ function NavSection({ title, items, pathname, defaultOpen = true }: NavSectionPr
           href={item.href}
           label={item.label}
           icon={item.icon}
+          available={item.available ?? true}
           isActive={pathname.startsWith(item.href)}
         />
       ))}

@@ -2,6 +2,11 @@ import NextAuth from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import { z } from 'zod';
 
+const apiBaseUrl =
+  process.env.API_URL ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  'http://localhost:3001';
+
 const loginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
@@ -23,7 +28,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
         const { email, password } = parsed.data;
 
-        const response = await fetch(`${process.env.API_URL}/auth/login`, {
+        const response = await fetch(`${apiBaseUrl}/api/auth/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, password }),
@@ -33,14 +38,18 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           return null;
         }
 
-        const data = await response.json();
+        const payload = await response.json();
+        if (!payload?.success || !payload?.data?.user || !payload?.data?.token) {
+          return null;
+        }
 
         return {
-          id: data.user.id,
-          email: data.user.email,
-          name: data.user.name,
-          workspaceId: data.workspaceId,
-          role: data.role,
+          id: payload.data.user.id,
+          email: payload.data.user.email,
+          name: payload.data.user.name,
+          workspaceId: payload.data.user.workspaceId,
+          role: payload.data.user.role,
+          accessToken: payload.data.token,
         };
       },
     }),
@@ -50,14 +59,17 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (user) {
         token.workspaceId = (user as { workspaceId?: string }).workspaceId;
         token.role = (user as { role?: string }).role;
+        token.accessToken = (user as { accessToken?: string }).accessToken;
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
+        session.user.id = token.sub as string;
         session.user.workspaceId = token.workspaceId as string;
         session.user.role = token.role as string;
       }
+      session.accessToken = token.accessToken as string | undefined;
       return session;
     },
   },
@@ -74,6 +86,7 @@ declare module 'next-auth' {
   interface User {
     workspaceId?: string;
     role?: string;
+    accessToken?: string;
   }
   interface Session {
     user: {
@@ -83,12 +96,6 @@ declare module 'next-auth' {
       workspaceId: string;
       role: string;
     };
-  }
-}
-
-declare module 'next-auth/jwt' {
-  interface JWT {
-    workspaceId?: string;
-    role?: string;
+    accessToken?: string;
   }
 }

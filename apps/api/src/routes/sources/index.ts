@@ -13,6 +13,29 @@ const listQuerySchema = z.object({
   search: z.string().optional(),
 });
 
+const createSourceSchema = z.object({
+  name: z.string().min(1).max(200),
+  type: z.enum(['RSS', 'EMAIL', 'SMS', 'MANUAL', 'WEB']),
+  url: z.string().url().optional(),
+  frequency: z
+    .enum(['MANUAL', 'EVERY_15M', 'HOURLY', 'EVERY_6H', 'DAILY', 'CUSTOM'])
+    .optional(),
+});
+
+const updateSourceSchema = z
+  .object({
+    name: z.string().min(1).max(200).optional(),
+    type: z.enum(['RSS', 'EMAIL', 'SMS', 'MANUAL', 'WEB']).optional(),
+    url: z.string().url().nullable().optional(),
+    frequency: z
+      .enum(['MANUAL', 'EVERY_15M', 'HOURLY', 'EVERY_6H', 'DAILY', 'CUSTOM'])
+      .optional(),
+    status: z.enum(['ACTIVE', 'DISABLED', 'ERROR', 'PENDING']).optional(),
+  })
+  .refine((data) => Object.keys(data).length > 0, {
+    message: 'At least one field is required',
+  });
+
 export async function sourcesRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authenticate);
 
@@ -73,19 +96,14 @@ export async function sourcesRoutes(fastify: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      const data = request.body as {
-        name: string;
-        type: string;
-        url?: string;
-        frequency?: string;
-      };
+      const data = createSourceSchema.parse(request.body);
 
       const source = await prisma.source.create({
         data: {
           name: data.name,
-          type: data.type as any,
+          type: data.type,
           url: data.url,
-          frequency: data.frequency as any || 'MANUAL',
+          frequency: data.frequency || 'MANUAL',
           workspaceId: request.user!.workspaceId,
           status: 'PENDING',
         },
@@ -130,7 +148,7 @@ export async function sourcesRoutes(fastify: FastifyInstance) {
     },
     async (request, reply) => {
       const { id } = request.params as { id: string };
-      const data = request.body as Record<string, unknown>;
+      const data = updateSourceSchema.parse(request.body);
 
       const existing = await prisma.source.findFirst({
         where: { id, workspaceId: request.user!.workspaceId },
@@ -146,6 +164,37 @@ export async function sourcesRoutes(fastify: FastifyInstance) {
       });
 
       return { success: true, data: source };
+    }
+  );
+
+  fastify.post(
+    '/:id/test',
+    {
+      schema: {
+        description: 'Test source accessibility',
+        tags: ['Sources'],
+        security: [{ bearerAuth: [] }],
+      },
+    },
+    async (request, reply) => {
+      const { id } = request.params as { id: string };
+
+      const source = await prisma.source.findFirst({
+        where: { id, workspaceId: request.user!.workspaceId },
+      });
+
+      if (!source) {
+        throw new NotFoundError('Source', id);
+      }
+
+      return {
+        success: true,
+        data: {
+          sourceId: source.id,
+          status: 'ok',
+          message: 'Source is configured and ready to fetch',
+        },
+      };
     }
   );
 

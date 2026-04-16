@@ -1,4 +1,4 @@
-import { api, type PaginatedResponse } from './api';
+import { api, type ApiEnvelope, type PaginatedResponse } from './api';
 
 export interface Item {
   id: string;
@@ -34,12 +34,12 @@ export interface Source {
   id: string;
   name: string;
   url: string;
-  type: 'RSS' | 'ATOM' | 'NEWSLETTER' | 'EMAIL';
-  status: 'active' | 'paused' | 'error';
+  type: 'RSS' | 'EMAIL' | 'SMS' | 'MANUAL' | 'WEB';
+  status: 'ACTIVE' | 'DISABLED' | 'ERROR' | 'PENDING';
   itemsCount: number;
   lastFetchedAt?: string;
   errorCount: number;
-  fetchFrequency: 'REAL_TIME' | 'HOURLY' | 'DAILY' | 'WEEKLY';
+  fetchFrequency: 'MANUAL' | 'EVERY_15M' | 'HOURLY' | 'EVERY_6H' | 'DAILY' | 'CUSTOM';
 }
 
 export interface WorkspaceStats {
@@ -60,6 +60,43 @@ export interface WorkspaceInfo {
   stats: WorkspaceStats;
 }
 
+interface PaginationMeta {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+  hasNext: boolean;
+  hasPrev: boolean;
+}
+
+interface ApiItemsData {
+  items: Item[];
+  pagination: PaginationMeta;
+}
+
+interface ApiStoriesData {
+  stories: Story[];
+  pagination: PaginationMeta;
+}
+
+interface ApiSourcesData {
+  sources: Source[];
+  pagination: PaginationMeta;
+}
+
+function toPaginatedResponse<T>(
+  list: T[],
+  pagination: PaginationMeta
+): PaginatedResponse<T> {
+  return {
+    data: list,
+    total: pagination.total,
+    page: pagination.page,
+    pageSize: pagination.limit,
+    totalPages: pagination.totalPages,
+  };
+}
+
 export async function getItems(params?: {
   page?: number;
   pageSize?: number;
@@ -68,27 +105,33 @@ export async function getItems(params?: {
 }): Promise<PaginatedResponse<Item>> {
   const searchParams = new URLSearchParams();
   if (params?.page) searchParams.set('page', String(params.page));
-  if (params?.pageSize) searchParams.set('pageSize', String(params.pageSize));
+  if (params?.pageSize) searchParams.set('limit', String(params.pageSize));
   if (params?.status) searchParams.set('status', params.status);
   if (params?.search) searchParams.set('search', params.search);
 
-  return api.get<PaginatedResponse<Item>>(`/items?${searchParams.toString()}`);
+  const payload = await api.get<ApiEnvelope<ApiItemsData>>(
+    `/api/items?${searchParams.toString()}`
+  );
+  return toPaginatedResponse(payload.data.items, payload.data.pagination);
 }
 
 export async function getItem(id: string): Promise<Item> {
-  return api.get<Item>(`/items/${id}`);
+  const payload = await api.get<ApiEnvelope<Item>>(`/api/items/${id}`);
+  return payload.data;
 }
 
 export async function approveItem(id: string): Promise<Item> {
-  return api.post<Item>(`/items/${id}/approve`);
+  const payload = await api.post<ApiEnvelope<Item>>(`/api/items/${id}/approve`);
+  return payload.data;
 }
 
 export async function rejectItem(id: string): Promise<Item> {
-  return api.post<Item>(`/items/${id}/reject`);
+  const payload = await api.post<ApiEnvelope<Item>>(`/api/items/${id}/reject`);
+  return payload.data;
 }
 
 export async function deleteItem(id: string): Promise<void> {
-  return api.delete<void>(`/items/${id}`);
+  await api.delete<void>(`/api/items/${id}`);
 }
 
 export async function getStories(params?: {
@@ -98,22 +141,28 @@ export async function getStories(params?: {
 }): Promise<PaginatedResponse<Story>> {
   const searchParams = new URLSearchParams();
   if (params?.page) searchParams.set('page', String(params.page));
-  if (params?.pageSize) searchParams.set('pageSize', String(params.pageSize));
+  if (params?.pageSize) searchParams.set('limit', String(params.pageSize));
   if (params?.status) searchParams.set('status', params.status);
 
-  return api.get<PaginatedResponse<Story>>(`/stories?${searchParams.toString()}`);
+  const payload = await api.get<ApiEnvelope<ApiStoriesData>>(
+    `/api/stories?${searchParams.toString()}`
+  );
+  return toPaginatedResponse(payload.data.stories, payload.data.pagination);
 }
 
 export async function getStory(id: string): Promise<Story> {
-  return api.get<Story>(`/stories/${id}`);
+  const payload = await api.get<ApiEnvelope<Story>>(`/api/stories/${id}`);
+  return payload.data;
 }
 
 export async function publishStory(id: string): Promise<Story> {
-  return api.post<Story>(`/stories/${id}/publish`);
+  const payload = await api.post<ApiEnvelope<Story>>(`/api/stories/${id}/publish`);
+  return payload.data;
 }
 
 export async function getSources(): Promise<Source[]> {
-  return api.get<Source[]>('/sources');
+  const payload = await api.get<ApiEnvelope<ApiSourcesData>>('/api/sources');
+  return payload.data.sources;
 }
 
 export async function createSource(data: {
@@ -122,25 +171,71 @@ export async function createSource(data: {
   type: string;
   fetchFrequency: string;
 }): Promise<Source> {
-  return api.post<Source>('/sources', data);
+  const payload = await api.post<ApiEnvelope<Source>>('/api/sources', {
+    name: data.name,
+    url: data.url,
+    type: data.type,
+    frequency: data.fetchFrequency,
+  });
+  return payload.data;
 }
 
 export async function updateSource(id: string, data: Partial<Source>): Promise<Source> {
-  return api.patch<Source>(`/sources/${id}`, data);
+  const payload = await api.patch<ApiEnvelope<Source>>(`/api/sources/${id}`, data);
+  return payload.data;
 }
 
 export async function deleteSource(id: string): Promise<void> {
-  return api.delete<void>(`/sources/${id}`);
+  await api.delete<void>(`/api/sources/${id}`);
 }
 
 export async function syncSource(id: string): Promise<void> {
-  return api.post<void>(`/sources/${id}/sync`);
+  await api.post(`/api/sources/${id}/test`);
 }
 
 export async function getWorkspaceInfo(): Promise<WorkspaceInfo> {
-  return api.get<WorkspaceInfo>('/workspace/info');
+  const payload = await api.get<
+    ApiEnvelope<{
+      id: string;
+      email: string;
+      name: string;
+      role: string;
+      workspace: { id: string; name: string; plan: string };
+    }>
+  >('/api/auth/me');
+
+  return {
+    id: payload.data.workspace.id,
+    name: payload.data.workspace.name,
+    planType: payload.data.workspace.plan,
+    subscriptionStatus: 'ACTIVE',
+    stats: {
+      itemsThisMonth: 0,
+      itemsLimit: 0,
+      storiesActive: 0,
+      sourcesActive: 0,
+      sourcesError: 0,
+      publishedThisMonth: 0,
+      pendingItems: 0,
+    },
+  };
 }
 
 export async function getDashboardStats(): Promise<WorkspaceStats> {
-  return api.get<WorkspaceStats>('/workspace/stats');
+  const [items, stories, sources] = await Promise.all([
+    api.get<ApiEnvelope<ApiItemsData>>('/api/items?page=1&limit=1'),
+    api.get<ApiEnvelope<ApiStoriesData>>('/api/stories?page=1&limit=1'),
+    api.get<ApiEnvelope<ApiSourcesData>>('/api/sources?page=1&limit=1'),
+  ]);
+
+  const sourceList = sources.data.sources;
+  return {
+    itemsThisMonth: items.data.pagination.total,
+    itemsLimit: 0,
+    storiesActive: stories.data.pagination.total,
+    sourcesActive: sourceList.filter((s) => s.status === 'ACTIVE').length,
+    sourcesError: sourceList.filter((s) => s.status === 'ERROR').length,
+    publishedThisMonth: 0,
+    pendingItems: 0,
+  };
 }

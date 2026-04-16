@@ -1,7 +1,11 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL ||
+  process.env.API_URL ||
+  'http://localhost:3001';
 
 interface FetchOptions extends RequestInit {
   workspaceId?: string;
+  token?: string;
 }
 
 class ApiClient {
@@ -15,15 +19,18 @@ class ApiClient {
     endpoint: string,
     options: FetchOptions = {}
   ): Promise<T> {
-    const { workspaceId, ...fetchOptions } = options;
-    
-    const headers: HeadersInit = {
+    const { workspaceId, token, ...fetchOptions } = options;
+
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      ...fetchOptions.headers,
+      ...(fetchOptions.headers as Record<string, string> | undefined),
     };
 
     if (workspaceId) {
       headers['x-workspace-id'] = workspaceId;
+    }
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
     }
 
     const response = await fetch(`${this.baseUrl}${endpoint}`, {
@@ -74,6 +81,11 @@ class ApiClient {
 
 export const api = new ApiClient(API_URL);
 
+export interface ApiEnvelope<T> {
+  success: boolean;
+  data: T;
+}
+
 export interface PaginatedResponse<T> {
   data: T[];
   total: number;
@@ -89,5 +101,10 @@ export interface ApiError {
 }
 
 export function isApiError(error: unknown): error is ApiError {
-  return error instanceof Error && 'code' in error;
+  return Boolean(
+    error &&
+      typeof error === 'object' &&
+      'message' in error &&
+      typeof (error as { message?: unknown }).message === 'string'
+  );
 }

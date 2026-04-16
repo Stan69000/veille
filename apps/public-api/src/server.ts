@@ -5,14 +5,15 @@ import rateLimit from '@fastify/rate-limit';
 import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
 
-import { itemsRoutes } from './routes/items';
-import { storiesRoutes } from './routes/stories';
-import { sourcesRoutes } from './routes/sources';
-import { feedsRoutes } from './routes/feeds';
 import { healthRoutes } from './routes/health';
+import { newsRoutes } from './routes/news';
+import { siteRoutes } from './routes/site';
 import { errorHandler } from './lib/error-handler';
 
-const PORT = parseInt(process.env.PORT || '3001', 10);
+const PORT = parseInt(
+  process.env.PUBLIC_API_PORT || process.env.PORT || '3002',
+  10
+);
 const HOST = process.env.HOST || '0.0.0.0';
 
 async function buildServer() {
@@ -60,10 +61,9 @@ async function buildServer() {
         },
       ],
       tags: [
-        { name: 'items', description: 'Articles et contenus' },
-        { name: 'stories', description: 'Stories et regroupements' },
-        { name: 'sources', description: 'Sources RSS' },
-        { name: 'feeds', description: 'Flux RSS/MDX/JSON' },
+        { name: 'news', description: 'Actualités publiées' },
+        { name: 'themes', description: 'Thèmes disponibles' },
+        { name: 'feeds', description: 'Flux JSON/RSS de base' },
       ],
     },
   });
@@ -78,20 +78,9 @@ async function buildServer() {
 
   app.setErrorHandler(errorHandler);
 
+  await app.register(siteRoutes);
   await app.register(healthRoutes, { prefix: '/health' });
-  await app.register(itemsRoutes, { prefix: '/api/v1/items' });
-  await app.register(storiesRoutes, { prefix: '/api/v1/stories' });
-  await app.register(sourcesRoutes, { prefix: '/api/v1/sources' });
-  await app.register(feedsRoutes, { prefix: '/api/v1/feeds' });
-
-  app.get('/', async () => {
-    return {
-      name: 'Veille Platform Public API',
-      version: '1.0.0',
-      docs: '/docs',
-      health: '/health',
-    };
-  });
+  await app.register(newsRoutes, { prefix: '/api/v1' });
 
   return app;
 }
